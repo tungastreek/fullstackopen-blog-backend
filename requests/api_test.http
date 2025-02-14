@@ -1,0 +1,10 @@
+### GET all blogs
+GET http://localhost:3001/api/blogs
+
+### POST create new blogs
+POST http://localhost:3001/api/blogs
+content-type: application/json
+
+{
+  "title": "Hello, World"
+}
