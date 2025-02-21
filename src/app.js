@@ -9,9 +9,10 @@ const middleware = require('./utils/middleware');
 const blogsRouter = require('./controllers/blogs');
 
 mongoose.set('strictQuery', true);
-mongoose.connect(config.MONGODB_URI)
+mongoose
+  .connect(config.MONGODB_URI)
   .then(() => logger.info('Connected to MongoDB'))
-  .catch(error => {
+  .catch((error) => {
     logger.error('Cannot connected to MongoDB:', error.message);
     process.exit(1);
   });
@@ -25,8 +26,10 @@ app.use(
       tokens.method(req, res),
       tokens.url(req, res),
       tokens.status(req, res),
-      tokens.res(req, res, 'content-length'), '-',
-      tokens['response-time'](req, res), 'ms',
+      tokens.res(req, res, 'content-length'),
+      '-',
+      tokens['response-time'](req, res),
+      'ms',
       JSON.stringify(req.body),
     ].join(' ');
   })

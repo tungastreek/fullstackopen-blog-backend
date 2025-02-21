@@ -4,7 +4,7 @@ const blogSchema = new mongoose.Schema({
   title: {
     type: String,
     required: true,
-    minLength: 5
+    minLength: 5,
   },
   author: String,
   url: String,
@@ -16,7 +16,7 @@ blogSchema.set('toJSON', {
     ret.id = doc._id.toString();
     delete ret._id;
     delete ret.__v;
-  }
+  },
 });
 
 const BlogModel = mongoose.model('Blog', blogSchema);
