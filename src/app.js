@@ -1,4 +1,5 @@
 const express = require('express');
+require('express-async-errors');
 const cors = require('cors');
 const morgan = require('morgan');
 const mongoose = require('mongoose');
@@ -21,18 +22,21 @@ const app = express();
 app.use(cors());
 app.use(express.json());
 app.use(
-  morgan(function (tokens, req, res) {
-    return [
-      tokens.method(req, res),
-      tokens.url(req, res),
-      tokens.status(req, res),
-      tokens.res(req, res, 'content-length'),
-      '-',
-      tokens['response-time'](req, res),
-      'ms',
-      JSON.stringify(req.body),
-    ].join(' ');
-  })
+  morgan(
+    function (tokens, req, res) {
+      return [
+        tokens.method(req, res),
+        tokens.url(req, res),
+        tokens.status(req, res),
+        tokens.res(req, res, 'content-length'),
+        '-',
+        tokens['response-time'](req, res),
+        'ms',
+        JSON.stringify(req.body),
+      ].join(' ');
+    },
+    { skip: middleware.shouldSkipLog }
+  )
 );
 app.use('/api/blogs', blogsRouter);
 app.use(middleware.unknownEndpoint);

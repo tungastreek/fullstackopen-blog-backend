@@ -4,9 +4,9 @@
   "description": "Blog backend",
   "main": "index.js",
   "scripts": {
-    "start": "node index.js",
-    "dev": "nodemon index.js",
-    "test": "node --test",
+    "start": "NODE_ENV=prod node index.js",
+    "dev": "NODE_ENV=dev nodemon index.js",
+    "test": "NODE_ENV=test node --test",
     "lint": "eslint ."
   },
   "author": "Tung Le Son",
@@ -15,6 +15,8 @@
     "cors": "^2.8.5",
     "dotenv": "^16.4.7",
     "express": "^4.21.2",
+    "express-async-errors": "^3.1.1",
+    "joi": "^17.13.3",
     "lodash": "^4.17.21",
     "mongoose": "^8.10.0",
     "morgan": "^1.10.0"
@@ -26,6 +28,7 @@
     "eslint-plugin-prettier": "^5.2.3",
     "globals": "^15.15.0",
     "nodemon": "^3.1.9",
-    "prettier": "^3.5.1"
+    "prettier": "^3.5.1",
+    "supertest": "^7.0.0"
   }
 }

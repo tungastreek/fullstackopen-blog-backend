@@ -1,21 +1,29 @@
 const BlogModel = require('../models/blog');
+const Joi = require('joi');
+const { ValidationError } = Joi;
+
+const blogCreateSchema = Joi.object({
+  title: Joi.string().min(5).required(),
+  author: Joi.string().required(),
+  url: Joi.string().required(),
+  likes: Joi.number().default(0),
+});
 
 const blogsRouter = require('express').Router();
 
-blogsRouter.get('/', (req, res, next) => {
-  BlogModel.find({})
-    .then((notes) => {
-      res.json(notes);
-    })
-    .catch((error) => next(error));
+blogsRouter.get('/', async (req, res) => {
+  const blogs = await BlogModel.find({});
+  res.json(blogs);
 });
 
-blogsRouter.post('/', (req, res, next) => {
+blogsRouter.post('/', async (req, res) => {
+  const { error } = blogCreateSchema.validate(req.body);
+  if (error) {
+    throw new ValidationError(error.message);
+  }
   const newBlog = new BlogModel(req.body);
-  newBlog
-    .save()
-    .then((savedBlog) => res.status(201).json(savedBlog))
-    .catch((error) => next(error));
+  const savedBlog = await newBlog.save();
+  res.status(201).json(savedBlog);
 });
 
 module.exports = blogsRouter;
