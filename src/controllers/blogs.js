@@ -1,6 +1,7 @@
-const BlogModel = require('../models/blog');
 const Joi = require('joi');
-const { ValidationError } = Joi;
+
+const BlogModel = require('../models/blog');
+const { validateWith } = require('../utils/middleware');
 
 const blogCreateSchema = Joi.object({
   title: Joi.string().min(5).required(),
@@ -23,21 +24,13 @@ blogsRouter.get('/', async (req, res) => {
   res.json(blogs);
 });
 
-blogsRouter.post('/', async (req, res) => {
-  const { error } = blogCreateSchema.validate(req.body);
-  if (error) {
-    throw new ValidationError(error.message);
-  }
+blogsRouter.post('/', validateWith(blogCreateSchema), async (req, res) => {
   const newBlog = new BlogModel(req.body);
   const savedBlog = await newBlog.save();
   res.status(201).json(savedBlog);
 });
 
-blogsRouter.put('/:id', async (req, res) => {
-  const { error } = blogUpdateSchema.validate(req.body);
-  if (error) {
-    throw new ValidationError(error.message);
-  }
+blogsRouter.put('/:id', validateWith(blogUpdateSchema), async (req, res) => {
   const updatedBlog = await BlogModel.findByIdAndUpdate(req.params.id, req.body, { new: true });
   if (!updatedBlog) {
     res.status(404).end();
