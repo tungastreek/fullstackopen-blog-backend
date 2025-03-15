@@ -1,9 +1,9 @@
 const { Router } = require('express');
 const Joi = require('joi');
-const bcrypt = require('bcrypt');
 
 const UserModel = require('../models/user');
 const { validateWith } = require('../utils/middleware');
+const { generatePasswordHash } = require('../utils/password-utils');
 
 const usersRouter = Router();
 
@@ -14,7 +14,7 @@ const UserCreateSchema = Joi.object({
 });
 
 usersRouter.get('/', async (req, res) => {
-  const users = await UserModel.find({}).populate('blogs', { title: 1, author: 1, url: 1, id: 1 });
+  const users = await UserModel.find({}).populate('blogs', { title: 1, author: 1, url: 1 });
   res.json(users);
 });
 
@@ -22,8 +22,7 @@ usersRouter.post('/', validateWith(UserCreateSchema), async (req, res) => {
   const { body } = req;
   const { username, name, password } = body;
 
-  const saltRounds = 10;
-  const passwordHash = await bcrypt.hash(password, saltRounds);
+  const passwordHash = await generatePasswordHash(password);
 
   const newUser = new UserModel({
     username,

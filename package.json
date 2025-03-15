@@ -6,7 +6,7 @@
   "scripts": {
     "start": "NODE_ENV=prod node index.js",
     "dev": "NODE_ENV=dev nodemon index.js",
-    "test": "NODE_ENV=test node --test",
+    "test": "NODE_ENV=test node --test --test-concurrency=1",
     "lint": "eslint ."
   },
   "author": "Tung Le Son",
