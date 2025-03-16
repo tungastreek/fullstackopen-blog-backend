@@ -46,20 +46,18 @@ blogsRouter.put('/:id', authenticate, validateWith(blogUpdateSchema), async (req
   const userId = req.authPayload.id;
   const user = await UserModel.findById(userId);
   if (!user) {
-    throw new CustomError('Unauthorize', 'AuthorizationError');
-  }
-
-  const blog = await BlogModel.findById(req.params.id);
-  if (!blog) {
-    throw new CustomError('Resource not found', 'NotFoundError');
-  }
-
-  if (blog.user.toString() !== user.id.toString()) {
     throw new CustomError('Unauthorized', 'AuthorizationError');
   }
 
-  const updatedBlog = await BlogModel.findByIdAndUpdate(req.params.id, req.body, { new: true });
-  res.json(updatedBlog);
+  const blog = await BlogModel.findOneAndUpdate({ _id: req.params.id, user: userId }, req.body, {
+    new: true,
+  });
+
+  if (!blog) {
+    throw new CustomError('Resource not found or unauthorized', 'NotFoundError');
+  }
+
+  res.json(blog);
 });
 
 blogsRouter.delete('/:id', authenticate, async (req, res) => {
@@ -69,15 +67,14 @@ blogsRouter.delete('/:id', authenticate, async (req, res) => {
     throw new CustomError('Unauthorized', 'AuthorizationError');
   }
 
-  const blog = await BlogModel.findById(req.params.id);
-  if (!blog) {
-    throw new CustomError('Resource not found', 'NotFoundError');
-  }
+  const result = await BlogModel.findOneAndDelete({
+    _id: req.params.id,
+    user: userId,
+  });
 
-  if (blog.user.toString() !== user.id.toString()) {
-    throw new CustomError('Unauthorized', 'AuthorizationError');
+  if (!result) {
+    throw new CustomError('Resource not found or unauthorized', 'NotFoundError');
   }
-  await BlogModel.findByIdAndDelete(req.params.id);
 
   res.status(204).end();
 });

@@ -187,7 +187,7 @@ describe('Blog API', () => {
       await api.put(`/api/blogs/${blogToUpdate.id}`).send(newBlog).expect(401);
     });
 
-    test('fails with status code 401 when logged in as a different user', async () => {
+    test('fails with status code 404 when logged in as a different user', async () => {
       const blogs = await blogsInDb();
       const blogToUpdate = blogs[0];
       const newBlog = {
@@ -201,7 +201,7 @@ describe('Blog API', () => {
         .put(`/api/blogs/${blogToUpdate.id}`)
         .set('Authorization', `Bearer ${wrongToken}`)
         .send(newBlog)
-        .expect(401);
+        .expect(404);
     });
 
     test('succeeds with valid data when updating author', async () => {
@@ -351,14 +351,14 @@ describe('Blog API', () => {
       await api.delete(`/api/blogs/${blogToDelete.id}`).expect(401);
     });
 
-    test('fails with status code 401 if logged in as a different user', async () => {
+    test('fails with status code 404 if logged in as a different user', async () => {
       const blogs = await blogsInDb();
       const blogToDelete = blogs[0];
 
       await api
         .delete(`/api/blogs/${blogToDelete.id}`)
         .set('Authorization', `Bearer ${wrongToken}`)
-        .expect(401);
+        .expect(404);
     });
 
     test('fails with status code 404 if blog does not exist', async () => {
