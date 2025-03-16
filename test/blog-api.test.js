@@ -11,25 +11,34 @@ const { initializeUsers, usersInDb, DEFAULT_PASSWORD } = require('./user-api-tes
 const api = supertest(app);
 
 describe('Blog API', () => {
-  let token, loggedInUserId;
+  let token, wrongToken, loggedInUserId, savedBlogs;
 
   beforeEach(async () => {
-    await BlogModel.deleteMany({});
-    await BlogModel.insertMany(initialBlogs);
     await initializeUsers();
     const users = await usersInDb();
-    const response = await api
+    savedBlogs = initialBlogs.map((blog) => {
+      blog.user = users[0].id;
+      return blog;
+    });
+    await BlogModel.deleteMany({});
+    await BlogModel.insertMany(savedBlogs);
+    let response = await api
       .post('/api/login')
       .send({ username: users[0].username, password: DEFAULT_PASSWORD });
     token = response.body.token;
     loggedInUserId = users[0].id;
+
+    response = await api
+      .post('/api/login')
+      .send({ username: users[1].username, password: DEFAULT_PASSWORD });
+    wrongToken = response.body.token;
   });
 
   describe('GET /api/blogs', () => {
     test('blogs are returned as JSON', async () => {
       const response = await api.get('/api/blogs');
       assert.strictEqual(response.headers['content-type'], 'application/json; charset=utf-8');
-      assert.strictEqual(response.body.length, initialBlogs.length);
+      assert.strictEqual(response.body.length, savedBlogs.length);
     });
 
     test('blogs have id property instead of _id', async () => {
@@ -62,13 +71,10 @@ describe('Blog API', () => {
         .expect('Content-Type', /application\/json/);
 
       const blogsAfter = await blogsInDb();
-      assert.strictEqual(blogsAfter.length, initialBlogs.length + 1);
+      assert.strictEqual(blogsAfter.length, savedBlogs.length + 1);
 
-      const titles = blogsAfter.map((blog) => blog.title);
-      assert(titles.includes('test blog'));
-
-      const users = blogsAfter.map((blog) => blog.user.toString());
-      assert(users.includes(loggedInUserId));
+      const savedBlog = blogsAfter.find((blog) => blog.title === newBlog.title);
+      assert(savedBlog.user.toString() === loggedInUserId);
     });
 
     test('fails with status code 401 if not logged in', async () => {
@@ -153,6 +159,7 @@ describe('Blog API', () => {
         title: 'updated title',
       };
       delete newBlog.id;
+      delete newBlog.user;
 
       const response = await api
         .put(`/api/blogs/${blogToUpdate.id}`)
@@ -175,8 +182,26 @@ describe('Blog API', () => {
         title: 'updated title',
       };
       delete newBlog.id;
+      delete newBlog.user;
 
       await api.put(`/api/blogs/${blogToUpdate.id}`).send(newBlog).expect(401);
+    });
+
+    test('fails with status code 401 when logged in as a different user', async () => {
+      const blogs = await blogsInDb();
+      const blogToUpdate = blogs[0];
+      const newBlog = {
+        ...blogToUpdate,
+        title: 'updated title',
+      };
+      delete newBlog.id;
+      delete newBlog.user;
+
+      await api
+        .put(`/api/blogs/${blogToUpdate.id}`)
+        .set('Authorization', `Bearer ${wrongToken}`)
+        .send(newBlog)
+        .expect(401);
     });
 
     test('succeeds with valid data when updating author', async () => {
@@ -187,8 +212,13 @@ describe('Blog API', () => {
         author: 'updated author',
       };
       delete newBlog.id;
+      delete newBlog.user;
 
-      const response = await api.put(`/api/blogs/${blogToUpdate.id}`).send(newBlog).expect(200);
+      const response = await api
+        .put(`/api/blogs/${blogToUpdate.id}`)
+        .set('Authorization', `Bearer ${token}`)
+        .send(newBlog)
+        .expect(200);
 
       assert.strictEqual(response.body.title, blogToUpdate.title);
       assert.strictEqual(response.body.author, 'updated author');
@@ -204,8 +234,13 @@ describe('Blog API', () => {
         url: 'updated url',
       };
       delete newBlog.id;
+      delete newBlog.user;
 
-      const response = await api.put(`/api/blogs/${blogToUpdate.id}`).send(newBlog).expect(200);
+      const response = await api
+        .put(`/api/blogs/${blogToUpdate.id}`)
+        .set('Authorization', `Bearer ${token}`)
+        .send(newBlog)
+        .expect(200);
 
       assert.strictEqual(response.body.title, blogToUpdate.title);
       assert.strictEqual(response.body.author, blogToUpdate.author);
@@ -221,8 +256,13 @@ describe('Blog API', () => {
         likes: 100,
       };
       delete newBlog.id;
+      delete newBlog.user;
 
-      const response = await api.put(`/api/blogs/${blogToUpdate.id}`).send(newBlog).expect(200);
+      const response = await api
+        .put(`/api/blogs/${blogToUpdate.id}`)
+        .set('Authorization', `Bearer ${token}`)
+        .send(newBlog)
+        .expect(200);
 
       assert.strictEqual(response.body.title, blogToUpdate.title);
       assert.strictEqual(response.body.author, blogToUpdate.author);
@@ -239,8 +279,13 @@ describe('Blog API', () => {
         likes: 100,
       };
       delete newBlog.id;
+      delete newBlog.user;
 
-      const response = await api.put(`/api/blogs/${blogToUpdate.id}`).send(newBlog).expect(200);
+      const response = await api
+        .put(`/api/blogs/${blogToUpdate.id}`)
+        .set('Authorization', `Bearer ${token}`)
+        .send(newBlog)
+        .expect(200);
 
       assert.strictEqual(response.body.title, 'updated title');
       assert.strictEqual(response.body.author, blogToUpdate.author);
@@ -256,8 +301,13 @@ describe('Blog API', () => {
         title: 'updated title',
       };
       delete newBlog.id;
+      delete newBlog.user;
 
-      await api.put(`/api/blogs/${id}`).send(newBlog).expect(404);
+      await api
+        .put(`/api/blogs/${id}`)
+        .set('Authorization', `Bearer ${token}`)
+        .send(newBlog)
+        .expect(404);
     });
 
     test('fails with status code 400 if id is invalid', async () => {
@@ -267,33 +317,58 @@ describe('Blog API', () => {
         title: 'updated title',
       };
       delete newBlog.id;
+      delete newBlog.user;
 
-      await api.put('/api/blogs/invalid_id').send(newBlog).expect(400);
+      await api
+        .put('/api/blogs/invalid_id')
+        .set('Authorization', `Bearer ${token}`)
+        .send(newBlog)
+        .expect(400);
     });
   });
 
   describe('DELETE /api/blogs/:id', () => {
-    test('succeeds with status code 204 if id is valid', async () => {
+    test('succeeds with status code 204 if id is valid and logged in with valid user', async () => {
       const blogs = await blogsInDb();
       const blogToDelete = blogs[0];
 
-      await api.delete(`/api/blogs/${blogToDelete.id}`).expect(204);
+      await api
+        .delete(`/api/blogs/${blogToDelete.id}`)
+        .set('Authorization', `Bearer ${token}`)
+        .expect(204);
 
       const blogsAfter = await blogsInDb();
-      assert.strictEqual(blogsAfter.length, initialBlogs.length - 1);
+      assert.strictEqual(blogsAfter.length, savedBlogs.length - 1);
 
       const titles = blogsAfter.map((blog) => blog.title);
       assert(!titles.includes(blogToDelete.title));
     });
 
+    test('fails with status code 401 if not logged in', async () => {
+      const blogs = await blogsInDb();
+      const blogToDelete = blogs[0];
+
+      await api.delete(`/api/blogs/${blogToDelete.id}`).expect(401);
+    });
+
+    test('fails with status code 401 if logged in as a different user', async () => {
+      const blogs = await blogsInDb();
+      const blogToDelete = blogs[0];
+
+      await api
+        .delete(`/api/blogs/${blogToDelete.id}`)
+        .set('Authorization', `Bearer ${wrongToken}`)
+        .expect(401);
+    });
+
     test('fails with status code 404 if blog does not exist', async () => {
       const id = await nonExistingId();
 
-      await api.delete(`/api/blogs/${id}`).expect(404);
+      await api.delete(`/api/blogs/${id}`).set('Authorization', `Bearer ${token}`).expect(404);
     });
 
     test('fails with status code 400 if id is invalid', async () => {
-      await api.delete('/api/blogs/invalid_id').expect(400);
+      await api.delete('/api/blogs/invalid_id').set('Authorization', `Bearer ${token}`).expect(400);
     });
   });
 

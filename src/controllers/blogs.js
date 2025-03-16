@@ -3,6 +3,7 @@ const Joi = require('joi');
 const BlogModel = require('../models/blog');
 const { authenticate, validateWith } = require('../utils/middleware');
 const UserModel = require('../models/user');
+const CustomError = require('../utils/custom-error');
 
 const blogCreateSchema = Joi.object({
   title: Joi.string().min(5).required(),
@@ -27,29 +28,57 @@ blogsRouter.get('/', async (req, res) => {
 
 blogsRouter.post('/', authenticate, validateWith(blogCreateSchema), async (req, res) => {
   const newBlog = new BlogModel(req.body);
+
   const userId = req.authPayload.id;
-  newBlog.user = userId;
+  const user = await UserModel.findById(userId);
+  if (!user) {
+    throw new CustomError('Unauthorized', 'AuthorizationError');
+  }
+  newBlog.user = user.id;
   const savedBlog = await newBlog.save();
 
-  const user = await UserModel.findById(userId);
   user.blogs = user.blogs.concat(savedBlog.id);
   user.save();
   res.status(201).json(savedBlog);
 });
 
-blogsRouter.put('/:id', validateWith(blogUpdateSchema), async (req, res) => {
-  const updatedBlog = await BlogModel.findByIdAndUpdate(req.params.id, req.body, { new: true });
-  if (!updatedBlog) {
-    res.status(404).end();
+blogsRouter.put('/:id', authenticate, validateWith(blogUpdateSchema), async (req, res) => {
+  const userId = req.authPayload.id;
+  const user = await UserModel.findById(userId);
+  if (!user) {
+    throw new CustomError('Unauthorize', 'AuthorizationError');
   }
+
+  const blog = await BlogModel.findById(req.params.id);
+  if (!blog) {
+    throw new CustomError('Resource not found', 'NotFoundError');
+  }
+
+  if (blog.user.toString() !== user.id.toString()) {
+    throw new CustomError('Unauthorized', 'AuthorizationError');
+  }
+
+  const updatedBlog = await BlogModel.findByIdAndUpdate(req.params.id, req.body, { new: true });
   res.json(updatedBlog);
 });
 
-blogsRouter.delete('/:id', async (req, res) => {
-  const blog = await BlogModel.findByIdAndDelete(req.params.id);
-  if (!blog) {
-    res.status(404).end();
+blogsRouter.delete('/:id', authenticate, async (req, res) => {
+  const userId = req.authPayload.id;
+  const user = await UserModel.findById(userId);
+  if (!user) {
+    throw new CustomError('Unauthorized', 'AuthorizationError');
   }
+
+  const blog = await BlogModel.findById(req.params.id);
+  if (!blog) {
+    throw new CustomError('Resource not found', 'NotFoundError');
+  }
+
+  if (blog.user.toString() !== user.id.toString()) {
+    throw new CustomError('Unauthorized', 'AuthorizationError');
+  }
+  await BlogModel.findByIdAndDelete(req.params.id);
+
   res.status(204).end();
 });
 

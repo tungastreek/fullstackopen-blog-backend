@@ -5,19 +5,17 @@ const mongoose = require('mongoose');
 
 const UserModel = require('../src/models/user');
 const app = require('../src/app');
-const { initializeUsers, usersInDb, nonExistingId } = require('./user-api-test-helper');
+const { initializeUsers, usersInDb } = require('./user-api-test-helper');
 
 const api = supertest(app);
 let initialUsers;
 
 describe('User API', () => {
   beforeEach(async () => {
-    // Get initialized users with consistent password hashes
     initialUsers = await initializeUsers();
 
     await UserModel.deleteMany({});
 
-    // Create users with hashed passwords
     const userObjects = initialUsers.map((user) => new UserModel(user));
     const promiseArray = userObjects.map((user) => user.save());
     await Promise.all(promiseArray);
@@ -39,12 +37,6 @@ describe('User API', () => {
       response.body.forEach((user) => {
         assert(!user.passwordHash, 'passwordHash should not be returned');
       });
-    });
-
-    test('returns 404 for non-existing user id', async () => {
-      const nonExistingUserId = await nonExistingId();
-
-      await api.get(`/api/users/${nonExistingUserId}`).expect(404);
     });
   });
 

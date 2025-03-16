@@ -4,12 +4,17 @@ const { describe, test, beforeEach, after } = require('node:test');
 const { initializeUsers, usersInDb, DEFAULT_PASSWORD } = require('./user-api-test-helper');
 const supertest = require('supertest');
 const app = require('../src/app');
+const UserModel = require('../src/models/user');
 
 const api = supertest(app);
 
 describe('Login API', () => {
   beforeEach(async () => {
-    await initializeUsers();
+    await UserModel.deleteMany({});
+    const users = await initializeUsers();
+    const userObjects = users.map((user) => new UserModel(user));
+    const promiseArray = userObjects.map((user) => user.save());
+    await Promise.all(promiseArray);
   });
 
   describe('POST /api/login', () => {
