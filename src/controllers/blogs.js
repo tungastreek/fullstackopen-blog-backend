@@ -26,6 +26,14 @@ blogsRouter.get('/', async (req, res) => {
   res.json(blogs);
 });
 
+blogsRouter.get('/:id', async (req, res) => {
+  const blog = await BlogModel.findById(req.params.id).populate('user', { username: 1, name: 1 });
+  if (!blog) {
+    throw new CustomError('Resource not found', 'NotFoundError');
+  }
+  res.json(blog);
+});
+
 blogsRouter.post('/', authenticate, validateWith(blogCreateSchema), async (req, res) => {
   const newBlog = new BlogModel(req.body);
 
@@ -58,6 +66,17 @@ blogsRouter.put('/:id', authenticate, validateWith(blogUpdateSchema), async (req
   }
 
   res.json(blog);
+});
+
+blogsRouter.put('/:id/like', authenticate, async (req, res) => {
+  const blog = await BlogModel.findById(req.params.id);
+  if (!blog) {
+    throw new CustomError('Resource not found', 'NotFoundError');
+  }
+  blog.likes = blog.likes + 1;
+  const updatedBlog = await blog.save();
+  await updatedBlog.populate('user', { username: 1, name: 1 });
+  res.json(updatedBlog);
 });
 
 blogsRouter.delete('/:id', authenticate, async (req, res) => {
